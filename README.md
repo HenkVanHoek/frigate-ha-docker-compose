@@ -201,3 +201,27 @@ Now that the password file exists, we can disable anonymous access.
     The container will now restart, read the secure config, and use the `passwordfile` (which now exists).
 
         docker compose restart mqtt
+
+---
+
+### Step 7: Start the Full Stack
+
+Now that the foundation (MQTT) is running correctly and securely, start the rest.
+
+    docker compose up -d
+
+All services (Frigate, HA, MQTT) should now be running and connected.
+
+---
+
+### Step 8: Home Assistant Configuration
+
+1.  Go to your Home Assistant instance (`http://[YOUR_SERVER_IP]:8123`).
+2.  Go to **Settings > Devices & Services > Add Integration**.
+3.  Search for and select **MQTT**.
+4.  **Broker:** `localhost`
+5.  **Port:** `1883`
+6.  **Username:** `ha_user` (or the `HA_MQTT_USER` from your `.env` file).
+7.  **Password:** The `HA_MQTT_PASSWORD` you set.
+
+After completing, Home Assistant will automatically discover the Frigate integration.
