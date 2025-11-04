@@ -175,7 +175,7 @@ We will use `docker compose` (without the hyphen).
 
 Now that the password file exists, we can disable anonymous access.
 
-1.  **Edit `mosquitto.conf`:**
+1.  **Using sudo Edit`mosquitto.conf`:**
     Open `/path/to/your/docker/mosquitto/config/mosquitto.conf` and **replace** its *entire contents* with this **final, secure** configuration.
 
         # FINAL CONFIGURATION (SECURE)
