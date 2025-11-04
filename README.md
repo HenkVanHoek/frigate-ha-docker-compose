@@ -6,6 +6,7 @@ This guide proactively addresses common pitfalls:
 * **Permission Issues:** Prevents "read-only" files by creating the directory structure with the correct user permissions beforehand.
 * **Crash Loops:** Avoids the Mosquitto "chicken-and-egg" problem by using a two-stage "bootstrap" configuration.
 * **Special Characters:** Uses `.env` variables in a way that safely handles special characters in passwords.
+* **Frigate Config:** Includes the necessary Frigate `config.yml` block to enable MQTT.
 
 ---
 
@@ -88,6 +89,7 @@ Now, create the `docker-compose.yml` file in your base Docker directory. This fi
           - /dev/dri/renderD128:/dev/dri/renderD128
         volumes:
           - /etc/localtime:/etc/localtime:ro
+          # This path MUST match where your config.yml is
           - /path/to/your/docker/config:/config
           - /path/to/your/docker/storage:/media/frigate
           - type: tmpfs
@@ -159,15 +161,14 @@ We will use `docker compose` (without the hyphen).
         source .env
 
 3.  **Create the MQTT users:**
-    This method (using variables with double quotes) ensures that **all special characters** are processed correctly.
+    This method ensures that **all special characters** are processed correctly.
+    **Note the `-c` flag on the FIRST command** to create the file.
 
-        # Create the Home Assistant user
+        # Create the Home Assistant user (-c creates the file)
         docker exec -it mqtt mosquitto_passwd -b -c /mosquitto/config/passwordfile "${HA_MQTT_USER}" "${HA_MQTT_PASSWORD}"
         
-        # Create the Frigate user
+        # Create the Frigate user (no -c, appends to the file)
         docker exec -it mqtt mosquitto_passwd -b /mosquitto/config/passwordfile "${FRIGATE_MQTT_USER}" "${FRIGATE_MQTT_PASSWORD}"
-
-    The file `/mosquitto/config/passwordfile` has now been created *inside* the container (and on your host).
 
 ---
 
@@ -175,7 +176,7 @@ We will use `docker compose` (without the hyphen).
 
 Now that the password file exists, we can disable anonymous access.
 
-1.  **Using sudo Edit`mosquitto.conf`:**
+1.  **Edit `mosquitto.conf`:**
     Open `/path/to/your/docker/mosquitto/config/mosquitto.conf` and **replace** its *entire contents* with this **final, secure** configuration.
 
         # FINAL CONFIGURATION (SECURE)
@@ -210,11 +211,37 @@ Now that the foundation (MQTT) is running correctly and securely, start the rest
 
     docker compose up -d
 
-All services (Frigate, HA, MQTT) should now be running and connected.
+All services (Frigate, HA, MQTT) should now be running.
 
 ---
 
-### Step 8: Home Assistant Configuration
+### Step 8: Configure Frigate for MQTT (Crucial!)
+
+Frigate needs to be told to enable MQTT in its own `config.yml` file.
+
+1.  **Edit your Frigate `config.yml` file.**
+    This is located at the path you mapped as a volume, e.g., `/path/to/your/docker/config/config.yml`.
+
+2.  **Add the following `mqtt:` block** to the file. This tells Frigate to enable MQTT and to get the details from the environment variables you defined in `docker-compose.yml`.
+
+        mqtt:
+          enabled: True
+          host: mqtt
+          port: 1883
+          user: "{FRIGATE_MQTT_USER}"
+          password: "{FRIGATE_MQTT_PASSWORD}"
+
+3.  **Save the `config.yml` file.**
+
+4.  **Restart Frigate** to apply the new config:
+
+        docker compose restart frigate
+
+You can now watch the Mosquitto log (`tail -f /path/to/your/docker/mosquitto/log/mosquitto.log`) and you will see a connection from `frigate_user`.
+
+---
+
+### Step 9: Home Assistant Configuration
 
 1.  Go to your Home Assistant instance (`http://[YOUR_SERVER_IP]:8123`).
 2.  Go to **Settings > Devices & Services > Add Integration**.
