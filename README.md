@@ -162,7 +162,7 @@ We will use `docker compose` (without the hyphen).
     This method (using variables with double quotes) ensures that **all special characters** are processed correctly.
 
         # Create the Home Assistant user
-        docker exec -it mqtt mosquitto_passwd -b /mosquitto/config/passwordfile "${HA_MQTT_USER}" "${HA_MQTT_PASSWORD}"
+        docker exec -it mqtt mosquitto_passwd -b -c /mosquitto/config/passwordfile "${HA_MQTT_USER}" "${HA_MQTT_PASSWORD}"
         
         # Create the Frigate user
         docker exec -it mqtt mosquitto_passwd -b /mosquitto/config/passwordfile "${FRIGATE_MQTT_USER}" "${FRIGATE_MQTT_PASSWORD}"
