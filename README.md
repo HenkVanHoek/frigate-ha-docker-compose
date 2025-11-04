@@ -1,12 +1,10 @@
-# frigate-ha-docker-compose
-A complete, step-by-step guide to installing Frigate, Home Assistant, and a secure Mosquitto MQTT broker using Docker Compose. This README.md helps you avoid common permission errors and setup pitfalls.
 # Guide: Frigate, Home Assistant, and MQTT with Docker Compose
 
 This guide is designed to set up a complete stack with Frigate, Home Assistant, and a secure Mosquitto (MQTT) broker using Docker Compose.
 
 This guide proactively addresses common pitfalls:
 * **Permission Issues:** Prevents "read-only" files by creating the directory structure with the correct user permissions beforehand.
-* **Crash Loops:** Avoids the Mosquitto "chicken-and-egg" problem (where it crashes because a password file is missing) by using a bootstrap configuration.
+* **Crash Loops:** Avoids the Mosquitto "chicken-and-egg" problem by using a two-stage "bootstrap" configuration.
 * **Special Characters:** Uses `.env` variables in a way that safely handles special characters in passwords.
 
 ---
@@ -51,21 +49,20 @@ Before starting Docker, create all necessary directories. This ensures you are t
 
 ### Step 3: Mosquitto Initial Config (The "Bootstrap")
 
-To prevent a crash loop, we will first start Mosquitto *without* requiring a password.
+To prevent the "crash loop," we will first start Mosquitto *without* requiring a password.
 
-Create the following configuration file. Because you created the directory yourself in Step 2, you will have write permissions.
+Create the following configuration file. **This is a minimal, temporary config.** Do **not** add the `password_file` line yet, as this will cause the container to crash.
 
 **File:** `/path/to/your/docker/mosquitto/config/mosquitto.conf`
 
     # INITIAL CONFIGURATION (TEMPORARY)
-    # We allow anonymous users so the container can start,
-    # allowing us to generate the password file.
+    # This file MUST NOT contain the 'password_file' line yet.
     
     persistence true
     persistence_location /mosquitto/data/
     log_dest file /mosquitto/log/mosquitto.log
     
-    # Temporary setting:
+    # Temporary setting to allow the container to start:
     allow_anonymous true
 
 ---
@@ -152,7 +149,7 @@ Now, create the `docker-compose.yml` file in your base Docker directory. This fi
 We will use `docker compose` (without the hyphen).
 
 1.  **Start MQTT only:**
-    Because the config allows anonymous users, the container will now start correctly.
+    Because the config (from Step 3) allows anonymous users, the container will now start correctly.
 
         docker compose up -d mqtt
 
@@ -179,7 +176,7 @@ We will use `docker compose` (without the hyphen).
 Now that the password file exists, we can disable anonymous access.
 
 1.  **Edit `mosquitto.conf`:**
-    Open `/path/to/your/docker/mosquitto/config/mosquitto.conf` and replace its contents with this:
+    Open `/path/to/your/docker/mosquitto/config/mosquitto.conf` and **replace** its *entire contents* with this **final, secure** configuration.
 
         # FINAL CONFIGURATION (SECURE)
         
@@ -187,9 +184,13 @@ Now that the password file exists, we can disable anonymous access.
         persistence_location /mosquitto/data/
         log_dest file /mosquitto/log/mosquitto.log
         
-        # Authentication (Secure)
+        # --- Authentication (SECURE) ---
+        # We disable anonymous access
         allow_anonymous false
+        
+        # And we NOW add the password_file line
         password_file /mosquitto/config/passwordfile
+        # ---------------------------------
         
         # Listeners
         listener 1883
@@ -200,27 +201,3 @@ Now that the password file exists, we can disable anonymous access.
     The container will now restart, read the secure config, and use the `passwordfile` (which now exists).
 
         docker compose restart mqtt
-
----
-
-### Step 7: Start the Full Stack
-
-Now that the foundation (MQTT) is running correctly and securely, start the rest.
-
-    docker compose up -d
-
-All services (Frigate, HA, MQTT) should now be running and connected.
-
----
-
-### Step 8: Home Assistant Configuration
-
-1.  Go to your Home Assistant instance (`http://[YOUR_SERVER_IP]:8123`).
-2.  Go to **Settings > Devices & Services > Add Integration**.
-3.  Search for and select **MQTT**.
-4.  **Broker:** `localhost`
-5.  **Port:** `1883`
-6.  **Username:** `ha_user` (or the `HA_MQTT_USER` from your `.env` file).
-7.  **Password:** The `HA_MQTT_PASSWORD` you set.
-
-After completing, Home Assistant will automatically discover the Frigate integration.
