@@ -1,3 +1,26 @@
+I've checked the GitHub repository you linked earlier, but it seems I'm unable to access the raw content of the file right now.
+
+However, based on our entire troubleshooting session, the "internal version" we've developed is significantly different and more complete than any of the previous versions.
+
+The version on GitHub is almost certainly an older one that does not include all the critical fixes we discovered.
+
+The Final, Corrected Guide
+Here is the complete, step-by-step Markdown document. It includes all the solutions we discovered, such as:
+
+Fixing the Mosquitto crash-loop (the -c flag).
+
+Forcing the Frigate 0.16+ update (to fix the 400 Bad Request error).
+
+Adding the HACS installation step.
+
+Using the correct HACS Frigate integration (not the built-in one).
+
+Using the correct https:// URL and port 8971.
+
+The final step for updating Home Assistant with docker compose pull.
+
+This is the definitive guide based on our session.
+
 # Guide: Frigate, Home Assistant, and MQTT with Docker Compose
 
 This guide is designed to set up a complete stack with Frigate, Home Assistant, and a secure Mosquitto (MQTT) broker using Docker Compose.
@@ -5,8 +28,8 @@ This guide is designed to set up a complete stack with Frigate, Home Assistant, 
 This guide proactively addresses common pitfalls:
 * **Permission Issues:** Prevents "read-only" files by creating the directory structure with the correct user permissions beforehand.
 * **Crash Loops:** Avoids the Mosquitto "chicken-and-egg" problem by using a two-stage "bootstrap" configuration.
-* **Special Characters:** Uses `.env` variables in a way that safely handles special characters in passwords.
-* **Frigate Config:** Includes the necessary Frigate `config.yml` block to enable MQTT.
+* **Version Mismatch:** Includes the step to update Frigate to v0.16+ to be compatible with the HACS integration.
+* **Integration:** Explains how to install HACS and the correct Frigate integration (not the built-in one).
 
 ---
 
@@ -205,17 +228,26 @@ Now that the password file exists, we can disable anonymous access.
 
 ---
 
-### Step 7: Start the Full Stack
+### Step 7: Update Frigate Container (Important!)
 
-Now that the foundation (MQTT) is running correctly and securely, start the rest.
+The latest Home Assistant Frigate integration (from HACS) requires Frigate version 0.16 or newer. We must force an update to prevent `400 Bad Request` errors.
 
-    docker compose up -d
+1.  **Stop all containers:**
 
-All services (Frigate, HA, MQTT) should now be running.
+        docker compose down
+
+2.  **Pull the latest "stable" Frigate image:**
+
+        docker pull ghcr.io/blakeblackshear/frigate:stable
+
+3.  **Start all containers again:**
+    This will re-create Frigate using the new `0.16+` image.
+
+        docker compose up -d
 
 ---
 
-### Step 8: Configure Frigate for MQTT (Crucial!)
+### Step 8: Configure Frigate (config.yml)
 
 Frigate needs to be told to enable MQTT in its own `config.yml` file.
 
@@ -237,18 +269,55 @@ Frigate needs to be told to enable MQTT in its own `config.yml` file.
 
         docker compose restart frigate
 
-You can now watch the Mosquitto log (`tail -f /path/to/your/docker/mosquitto/log/mosquitto.log`) and you will see a connection from `frigate_user`.
+---
+
+### Step 9: Install HACS
+
+The official-looking "Frigate" integration in Home Assistant is only for the add-on. For a Docker setup, we must use the custom integration from HACS.
+
+1.  If you do not have HACS, follow the official guide to install it:
+    [https://hacs.xyz/docs/installation/container](https://hacs.xyz/docs/installation/container)
 
 ---
 
-### Step 9: Home Assistant Configuration
+### Step 10: Install the HACS Frigate Integration
 
-1.  Go to your Home Assistant instance (`http://[YOUR_SERVER_IP]:8123`).
-2.  Go to **Settings > Devices & Services > Add Integration**.
-3.  Search for and select **MQTT**.
-4.  **Broker:** `localhost`
-5.  **Port:** `1883`
-6.  **Username:** `ha_user` (or the `HA_MQTT_USER` from your `.env` file).
-7.  **Password:** The `HA_MQTT_PASSWORD` you set.
+1.  In your Home Assistant sidebar, go to **HACS**.
+2.  Go to **Integrations**.
+3.  Click **+ EXPLORE & ADD REPOSITORIES**.
+4.  Search for **"Frigate"** and install it.
+5.  **Restart Home Assistant** (Go to Settings > System > Restart, or run `docker compose restart homeassistant`).
 
-After completing, Home Assistant will automatically discover the Frigate integration.
+---
+
+### Step 11: Configure the Frigate Integration
+
+1.  After Home Assistant restarts, go to **Settings > Devices & Services**.
+2.  Click **+ ADD INTEGRATION**.
+3.  Search for and select **Frigate**.
+4.  You will be prompted for your Frigate URL and credentials.
+
+* **URL:** **`https://[YOUR_SERVER_IP]:8971`** (e.g., `https://mail:8971` or `https://192.168.178.118:8971`).
+* **Validate SSL:** **Uncheck this box** (because Frigate uses a self-signed certificate).
+* **Username:** The user you created in the Frigate Web UI.
+* **Password:** The password you created in the Frigate Web UI.
+
+5.  Click **Submit**. The integration should now connect and add all your cameras and devices.
+
+---
+
+### Step 12: How to Update Home Assistant
+
+You cannot update from the HA web interface. You must update it from the command line.
+
+1.  **Pull the new image:**
+
+        docker compose pull homeassistant
+
+2.  **Re-create the container:**
+
+        docker compose up -d homeassistant
+
+3.  **(Optional) Clean up old images:**
+
+        docker image prune
