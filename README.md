@@ -1,26 +1,3 @@
-I've checked the GitHub repository you linked earlier, but it seems I'm unable to access the raw content of the file right now.
-
-However, based on our entire troubleshooting session, the "internal version" we've developed is significantly different and more complete than any of the previous versions.
-
-The version on GitHub is almost certainly an older one that does not include all the critical fixes we discovered.
-
-The Final, Corrected Guide
-Here is the complete, step-by-step Markdown document. It includes all the solutions we discovered, such as:
-
-Fixing the Mosquitto crash-loop (the -c flag).
-
-Forcing the Frigate 0.16+ update (to fix the 400 Bad Request error).
-
-Adding the HACS installation step.
-
-Using the correct HACS Frigate integration (not the built-in one).
-
-Using the correct https:// URL and port 8971.
-
-The final step for updating Home Assistant with docker compose pull.
-
-This is the definitive guide based on our session.
-
 # Guide: Frigate, Home Assistant, and MQTT with Docker Compose
 
 This guide is designed to set up a complete stack with Frigate, Home Assistant, and a secure Mosquitto (MQTT) broker using Docker Compose.
